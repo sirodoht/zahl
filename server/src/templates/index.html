@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Number Predictor</title>
+  <style>
+    html,
+    body {
+      font-family: sans-serif;
+      line-height: 2;
+    }
+  </style>
+</head>
+
+<body>
+  <div>
+    <div>
+      <button id="clear">Clear</button>
+    </div>
+
+    <div>
+      <input type="hidden" id="canvasimg" name="canvasimg">
+      <canvas id="canvas" width="280" height="280"></canvas>
+    </div>
+
+    <div>
+      <button onclick="canvastoimage()">
+        Detect Number
+      </button>
+    </div>
+
+    <div>
+      Prediction: <span id="prediction-top"></span>
+    </div>
+
+    <div>All probabilities:</div>
+    <div id="prediction-all"></div>
+  </div>
+
+  <script>
+    // Canvas Drawing
+    window.addEventListener('load', () => {
+      const canvas = document.querySelector('#canvas');
+      const context = canvas.getContext('2d');
+      context.fillStyle = "black";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      let radius = 10;
+      let start = 0;
+      let end = Math.PI * 2;
+      let dragging = false;
+
+      context.lineWidth = radius * 2;
+      context.lineCap = 'round';
+
+      const putPoint = (e) => {
+        if (dragging) {
+          context.fillStyle = "white";
+          context.strokeStyle = "white";
+          context.lineTo(e.offsetX, e.offsetY);
+          context.stroke();
+          context.beginPath();
+          context.arc(e.offsetX, e.offsetY, radius, start, end);
+          context.fill();
+          context.beginPath();
+          context.moveTo(e.offsetX, e.offsetY);
+        }
+      }
+
+      const engage = (e) => {
+        dragging = true;
+        putPoint(e);
+      }
+
+      const disengage = () => {
+        dragging = false;
+        context.beginPath();
+      }
+
+      canvas.addEventListener('mousedown', engage);
+      canvas.addEventListener('mousemove', putPoint);
+      canvas.addEventListener('mouseup', disengage);
+
+      const clear = document.querySelector('#clear');
+      clear.addEventListener('click', () => {
+        const canvas = document.querySelector('#canvas');
+        const context = canvas.getContext('2d');
+        context.filter = 'invert(0)';
+        context.fillStyle = "black";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      });
+    });
+
+    // Submit
+    const canvastoimage = () => {
+      const canvas = document.querySelector('#canvas');
+      dataURI = canvas.toDataURL()
+      document.getElementById('canvasimg').value = dataURI;
+      const reqData = {
+        dataURI: dataURI,
+      }
+      fetch('/data', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(reqData),
+      })
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('prediction-all').innerHTML = '';
+          document.getElementById('prediction-top').innerText = data.topPrediction;
+          for (const [index, value] of data.predictionArray.entries()) {
+            document.getElementById('prediction-all').innerHTML += `${index}: ${value}<br>`;
+          };
+        });
+    };
+  </script>
+</body>
+
+</html>
